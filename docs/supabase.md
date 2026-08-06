@@ -122,45 +122,7 @@ Backspace는 마지막 글자 삭제, 최대 12글자입니다.
 
 ---
 
-## 4. (옵션) GitHub Secret 처리
-
-키를 깃허브에 올리지 않으면서, GitHub Actions 같은 곳에서 쓰고 싶을 때.
-
-### 4-1. Secret 등록
-
-레포 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-
-| Name | Secret |
-|---|---|
-| `SUPABASE_URL` | `https://abcdefgh.supabase.co` |
-| `SUPABASE_ANON_KEY` | `eyJhbGci...` |
-
-### 4-2. 워크플로에서 꺼내 쓰기
-
-`.github/workflows/test.yml` 예시:
-
-```yaml
-name: test
-on: [push]
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
-      - run: python -c "import leaderboard; print(leaderboard.get_top10())"
-```
-
-`load_dotenv()`는 `.env`가 없으면 조용히 넘어가고, `os.getenv()`가 GitHub이 넣어준 환경변수를 그대로 읽습니다. 그래서 **코드는 하나도 안 고쳐도 됩니다.**
-
-### 4-3. 체크리스트
+## 4. 커밋 전 체크리스트
 
 - [ ] `.gitignore`에 `.env` 있는지 확인
 - [ ] 코드에 키를 직접 써넣지 않았는지 확인 (`os.getenv`로만 읽기)
