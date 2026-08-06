@@ -62,7 +62,24 @@ python main.py
 | 키 | 동작 |
 | --- | --- |
 | 방향키 | 뱀 방향 전환 |
-| Space | 재시작 (게임 오버 후) |
+| 문자키 / Backspace | 닉네임 입력 (게임 오버 후) |
+| Enter | 점수 저장 후 랭킹 보기 |
+| Esc | 저장 없이 랭킹 보기 |
+| Space | 재시작 (랭킹 화면에서) |
+
+---
+
+## 온라인 랭킹 (선택)
+
+Supabase에 점수를 저장하고 TOP 10을 조회하는 기능이 포함되어 있습니다.
+설정 방법은 [docs/supabase.md](docs/supabase.md) 참고.
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env   # 그리고 Supabase URL / anon key 채우기
+```
+
+`.env`가 없으면 저장·조회만 건너뛰고 게임은 정상 동작합니다.
 
 ---
 
