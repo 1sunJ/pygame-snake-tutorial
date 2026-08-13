@@ -7,7 +7,6 @@
 
 import os
 import math
-import random
 
 # 화면을 띄우지 않고 이미지만 저장하므로 더미 비디오 드라이버 사용
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -19,7 +18,6 @@ MARGIN = (CELL - TUBE) // 2   # = 2
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITE_DIR = os.path.join(ROOT, "assets", "sprites")
-TILE_DIR   = os.path.join(ROOT, "assets", "tiles")
 
 # ── 팔레트: 따뜻한 숯빛 배경 + 잎사귀 초록 ─────────────────────────
 # 처음엔 남색 배경에 민트색 뱀이었는데, 파랑과 초록이 둘 다 차가운 색이라
@@ -47,11 +45,6 @@ STEM_DARK = (82,   50,  30)
 LEAF          = (165, 224,  99)
 LEAF_LIT      = (200, 240, 130)
 LEAF_OUTLINE  = (94,  130,  48)
-
-BG_GAP   = (20, 16, 13)     # 칸 사이 이음새 (가장 어두움)
-BG_A     = (42, 35, 28)     # 어두운 칸
-BG_B     = (50, 42, 33)     # 밝은 칸
-BG_EDGE  = (61, 51, 40)     # 칸 위쪽 모서리 (살짝 도드라지게)
 
 
 def new_surface(w, h=None):
@@ -265,54 +258,9 @@ def make_apple():
     return surf
 
 
-def in_round_rect(px, py, x0, y0, x1, y1, r):
-    # 모서리가 둥근 사각형 안에 있는지 검사
-    # 사각형을 안쪽으로 r만큼 줄인 영역에서 가장 가까운 점을 찾고
-    # 그 점까지의 거리가 r 이하이면 안쪽
-    cx = min(max(px, x0 + r), x1 - r)
-    cy = min(max(py, y0 + r), y1 - r)
-    return (px - cx) ** 2 + (py - cy) ** 2 <= r * r
-
-
-def make_bg_tile():
-    # 2칸x2칸(64x64) 배경 타일
-    #
-    # 처음엔 평평한 체크무늬에 노이즈를 뿌렸는데, 노이즈가 질감이 아니라
-    # 얼룩처럼 보이고 경계선이 칸의 두 변에만 있어 모눈종이처럼 어긋나 보였다.
-    # 칸마다 모서리가 둥근 판을 깔고 사이를 어둡게 비우는 방식으로 바꿈.
-    # 격자가 "의도된 무늬"로 읽히고 이음새도 사방이 균일해진다.
-    size = CELL * 2
-    surf = pygame.Surface((size, size))
-    surf.fill(BG_GAP)
-    rng = random.Random(20260813)
-
-    for y in range(size):
-        for x in range(size):
-            # 각 칸의 내부 좌표 (0~31)
-            lx, ly = x % CELL + 0.5, y % CELL + 0.5
-            if not in_round_rect(lx, ly, 1.0, 1.0, CELL - 1.0, CELL - 1.0, 5.0):
-                continue
-
-            same = (x // CELL) == (y // CELL)
-            r, g, b = BG_A if same else BG_B
-
-            # 위쪽 모서리를 한 단계 밝게 해서 살짝 튀어나와 보이게 함
-            if not in_round_rect(lx, ly + 1.5, 1.0, 1.0, CELL - 1.0, CELL - 1.0, 5.0):
-                r, g, b = BG_EDGE
-
-            # 아주 옅은 질감. 판 안에서만 흔들어야 얼룩으로 안 보임
-            elif rng.random() < 0.10:
-                r, g, b = r + 3, g + 4, b + 5
-
-            surf.set_at((x, y), (r, g, b))
-
-    return surf
-
-
 def main():
     pygame.init()
     os.makedirs(SPRITE_DIR, exist_ok=True)
-    os.makedirs(TILE_DIR, exist_ok=True)
 
     sprites = {
         "snake_head.png":   make_head(),
@@ -324,9 +272,6 @@ def main():
     for name, surf in sprites.items():
         pygame.image.save(surf, os.path.join(SPRITE_DIR, name))
         print("saved", os.path.join("assets/sprites", name))
-
-    pygame.image.save(make_bg_tile(), os.path.join(TILE_DIR, "bg_tile.png"))
-    print("saved", os.path.join("assets/tiles", "bg_tile.png"))
 
     pygame.quit()
 

@@ -47,7 +47,7 @@ all use it, or the snake will change width as it moves.
 
 ## 3. Asset list
 
-Six files total.
+Five files total. The board background is **not** a file — see section 4-6.
 
 | File | Size | Purpose |
 |---|---|---|
@@ -56,25 +56,18 @@ Six files total.
 | `snake_corner.png` | 32x32 | 90-degree turn, left <-> down |
 | `snake_tail.png` | 32x32 | Tail tip, body to the right |
 | `food_apple.png` | 32x32 | Food item |
-| `bg_tile.png` | 64x64 | Board background, covers 2x2 cells |
 
 Target layout:
 
 ```
 assets/
-  sprites/          moving objects
+  sprites/
     snake_head.png
     snake_body.png
     snake_corner.png
     snake_tail.png
     food_apple.png
-  tiles/            repeating background
-    bg_tile.png
 ```
-
-The split follows the original meaning of the terms. A *sprite* is a movable
-image drawn over the background; a *tile* is a fixed piece repeated to build the
-background itself. `bg_tile.png` is the only tile here.
 
 Note that "sprite" in this document means an image file, in the general sense.
 It does **not** refer to `pygame.sprite.Sprite`, the class-based helper with
@@ -187,31 +180,34 @@ x=0                              x=31
 This is the only sprite with no full-bleed edge. Food is a discrete object and
 needs margin on every side to read as sitting inside a cell.
 
-### 4-6. `bg_tile.png` — board background
+### 4-6. Board background — no file
 
-64x64, covering a 2x2 block of cells. Repeated 10x10 times to fill the 20x20
-grid.
+The background went through three versions and ended up with no asset at all.
 
-```
-+------+------+
-| dark | lite |   this 64x64 tile repeats
-+------+------+   across the whole board
-| lite | dark |
-+------+------+
-```
+| Version | Result |
+|---|---|
+| Flat checkerboard + per-pixel noise | Noise read as smudging; the 1px line ran along only two sides of each cell, so the grid looked off-register |
+| Rounded plates with a darker gap | Clean, but 400 repeating plates competed with one snake and one apple for attention |
+| Flat board + corner dots + vignette | Background finally recedes; the dots keep just enough spatial reference |
 
-Requirements:
+**The tile was the problem, not its colours.** Any repeating pattern at 400
+repetitions asserts itself. What the player actually needs from the background
+is the ability to judge whether the head and the food are on the same line, and
+a single dot at each cell corner does that without drawing attention.
 
-- **Seamless.** The left edge must continue into the right edge, and the top
-  into the bottom, or every repetition shows a visible join.
-- **Very low contrast.** The tile appears 100 times on screen. Anything more
-  than 2-3 brightness steps between the two shades makes the repetition obvious
-  and pulls attention away from the snake.
-- **Not green.** The snake is the green element. A grass background would bury
-  it. Neutral or dark earth tones keep the snake readable.
+The current background is a flat fill, one dot at each cell corner, a vignette,
+and a frame around the play area. It is built in `Renderer._build_board` rather
+than loaded, because **a vignette cannot be a repeating tile** — its value
+depends on distance from the centre of the screen, so no repeated piece can
+produce it.
 
-The checkerboard is functional as well as decorative: visible cells let the
-player count the distance between the head and the food.
+Two things follow from dropping the file:
+
+- The background adapts to any grid size on its own. Only the five sprites are
+  still tied to `CELL_SIZE` being 32.
+- Computing the vignette per pixel would be 400k iterations and a visible
+  startup pause. It is computed at 128x128 and smooth-scaled up instead. At
+  48x48 the upscale left a faint square plateau in the middle of the screen.
 
 ---
 
@@ -280,7 +276,7 @@ render and the generator now shades this way.
 | Decision | Choice |
 |---|---|
 | Palette | Leaf green on a warm charcoal board |
-| Background texture | Rounded plates with a darker gap between them |
+| Background | Flat board, corner dots, vignette, frame — generated in code |
 | Food | Apple |
 
 ### Palette revision
@@ -314,22 +310,13 @@ combination keeps both the modern look and the readable grid.
 | Apple body | `#FF4757` |
 | Apple highlight | `#FF8A94` |
 | Apple leaf | `#A5E063` |
-| Board gap | `#14100D` |
-| Board dark cell | `#2A231C` |
-| Board light cell | `#322A21` |
-| Cell top edge | `#3D3328` |
+| Board | `#26201A` |
+| Cell corner dot | `#483E32` |
+| Frame | `#181410` |
+| Frame inner line | `#3C3329` |
 
-### Board tile revision
-
-The first attempt was a flat checkerboard with per-pixel noise and a 1px lighter
-line on two sides of each cell. It looked muddy: the noise read as smudging
-rather than texture, and because the line only ran along two edges the grid
-looked misaligned, like graph paper printed off-register.
-
-The current tile instead draws each cell as a rounded plate with a darker gap
-between plates, and lifts the top edge of each plate by one shade. The grid now
-reads as a deliberate pattern rather than dirt, and the gap is uniform on all
-four sides.
+Board colours live in `settings.py`, not in the generator, since the background
+is drawn at runtime.
 
 ---
 

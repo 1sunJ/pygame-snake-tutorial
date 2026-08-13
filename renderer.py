@@ -6,9 +6,11 @@
 # 덕분에 snake_game.py는 여전히 좌표 리스트만 넘겨주면 된다.
 
 import os
+import math
 import pygame
 from settings import (CELL_SIZE, WIDTH, HEIGHT, BG, GREEN, WHITE,
-                      FONT_BIG, FONT_SMALL)
+                      FONT_BIG, FONT_SMALL,
+                      BOARD, BOARD_DOT, FRAME, FRAME_LINE, VIGNETTE)
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -49,17 +51,51 @@ class Renderer:
         self.tail   = self._load("sprites", "snake_tail.png")
         self.food   = self._load("sprites", "food_apple.png")
 
-        # 배경 타일(64x64)을 화면 크기만큼 미리 이어붙여 한 장으로 만들어 둔다
-        # 매 프레임 100번 붙이는 대신 완성된 한 장을 통째로 붙이면 됨
-        tile = pygame.image.load(
-            os.path.join(ASSETS, "tiles", "bg_tile.png")).convert()
-        self.board = pygame.Surface((WIDTH, HEIGHT))
-        for y in range(0, HEIGHT, tile.get_height()):
-            for x in range(0, WIDTH, tile.get_width()):
-                self.board.blit(tile, (x, y))
+        # 판 배경도 시작할 때 한 장으로 만들어 둔다
+        self.board = self._build_board()
 
     def _load(self, *parts):
         return pygame.image.load(os.path.join(ASSETS, *parts)).convert_alpha()
+
+    def _build_board(self):
+        # 판 배경을 이미지 파일 대신 여기서 계산해서 그린다.
+        #
+        # 처음엔 칸마다 판을 깐 격자 무늬 타일을 썼는데, 400칸이 반복되면서
+        # 배경이 물러나지 않고 뱀 하나 사과 하나와 시선을 다퉜다.
+        # 지금은 평평한 바탕에 칸 모서리 점만 남겨 위치만 가늠할 수 있게 했다.
+        #
+        # 가장자리를 어둡게 하는 비네팅은 화면 중심에서의 거리에 따라 값이
+        # 달라져서 반복 타일로는 만들 수 없다. 그래서 이미지 파일이 사라졌고,
+        # 덕분에 격자 크기를 바꿔도 배경은 알아서 따라온다.
+        board = pygame.Surface((WIDTH, HEIGHT))
+        board.fill(BOARD)
+
+        # 칸 모서리에 점 하나씩. 사과와 머리가 같은 줄인지 눈으로 재는 용도
+        for y in range(0, HEIGHT, CELL_SIZE):
+            for x in range(0, WIDTH, CELL_SIZE):
+                board.set_at((x, y), BOARD_DOT)
+
+        board.blit(self._vignette(), (0, 0))
+
+        # 판이 창 끝까지 흘러넘치지 않도록 테두리를 두름
+        # 배경에 그리므로 가장자리 칸을 지나는 뱀이 위에 덮인다
+        pygame.draw.rect(board, FRAME, (0, 0, WIDTH, HEIGHT), 5)
+        pygame.draw.rect(board, FRAME_LINE, (5, 5, WIDTH - 10, HEIGHT - 10), 1)
+        return board
+
+    def _vignette(self):
+        # 640x640 픽셀을 하나씩 계산하면 40만 번이라 시작이 눈에 띄게 느려진다.
+        # 작게 계산한 뒤 부드럽게 확대하면 결과는 같고 훨씬 빠름.
+        # 너무 작게 잡으면(48 등) 확대할 때 중앙에 사각 얼룩이 남아 128로 둠
+        small = 128
+        shade = pygame.Surface((small, small), pygame.SRCALPHA)
+        c = (small - 1) / 2.0
+        far = math.hypot(c, c)
+        for y in range(small):
+            for x in range(small):
+                t = (math.hypot(x - c, y - c) / far) ** 1.4
+                shade.set_at((x, y), (0, 0, 0, int(VIGNETTE * min(1.0, t))))
+        return pygame.transform.smoothscale(shade, (WIDTH, HEIGHT))
 
     def _segment(self, snake, i):
         # snake[i]가 어떤 모양이어야 하는지 판단해서 (이미지, 회전각)을 반환

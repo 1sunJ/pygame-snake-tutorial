@@ -79,17 +79,33 @@ self.head = self._load("sprites", "snake_head.png")
 > `convert_alpha()`는 화면이 만들어진 뒤에만 호출할 수 있습니다.
 > `main.py`가 `set_mode()`를 먼저 부르고 `Renderer`를 만들기 때문에 문제없습니다.
 
-### 3-2. 배경은 미리 한 장으로 합쳐 둔다
+### 3-2. 배경은 이미지가 아니라 코드로 그린다
 
-배경 타일은 64x64라 640x640 화면을 채우려면 100번 붙여야 합니다.
-매 프레임 100번 붙이는 대신, 시작할 때 완성본 한 장을 만들어 둡니다.
+배경은 파일이 없습니다. `_build_board()`가 시작할 때 한 장을 만들어 둡니다.
 
 ```python
-self.board = pygame.Surface((WIDTH, HEIGHT))
-for y in range(0, HEIGHT, tile.get_height()):
-    for x in range(0, WIDTH, tile.get_width()):
-        self.board.blit(tile, (x, y))
+board.fill(BOARD)
+for y in range(0, HEIGHT, CELL_SIZE):          # 칸 모서리 점
+    for x in range(0, WIDTH, CELL_SIZE):
+        board.set_at((x, y), BOARD_DOT)
+board.blit(self._vignette(), (0, 0))           # 가장자리 어둡게
+pygame.draw.rect(board, FRAME, (0, 0, WIDTH, HEIGHT), 5)
 ```
+
+처음엔 반복 타일 이미지를 썼는데 두 가지 이유로 걷어냈습니다.
+
+**격자가 시끄러웠습니다.** 400칸이 반복되면서 배경이 물러나지 않고
+뱀 하나 사과 하나와 시선을 다퉜습니다. 점만 남기니 해결됐습니다.
+
+**비네팅은 반복 타일로 못 만듭니다.** 화면 중심에서의 거리에 따라
+밝기가 달라지므로, 어떤 조각을 반복해도 나올 수 없는 무늬입니다.
+
+덕분에 배경은 격자 크기가 바뀌어도 알아서 따라옵니다.
+`CELL_SIZE`에 묶여 있는 건 이제 스프라이트 5장뿐입니다.
+
+비네팅은 640x640을 픽셀마다 계산하면 40만 번이라 시작이 눈에 띄게 느려집니다.
+128x128로 작게 계산한 뒤 부드럽게 확대합니다.
+48x48까지 줄여봤더니 확대할 때 화면 중앙에 사각 얼룩이 남아서 128로 정했습니다.
 
 그리고 매 프레임에는 이 한 장만 붙입니다.
 
