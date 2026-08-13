@@ -279,9 +279,24 @@ render and the generator now shades this way.
 
 | Decision | Choice |
 |---|---|
-| Palette | Vivid modern — high chroma green on dark navy |
-| Background texture | Fine per-pixel noise plus a faint 1px cell border |
+| Palette | Leaf green on a warm charcoal board |
+| Background texture | Rounded plates with a darker gap between them |
 | Food | Apple |
+
+### Palette revision
+
+The first palette was a mint-green snake on dark navy. It did not work. Navy
+carries a lot of chroma, so the board asserted its own colour instead of
+receding, and since blue and green are both cool the two fought rather than
+separated. The red apple also sat awkwardly on it.
+
+Dropping the board to a warm, low-chroma charcoal fixes both problems at once:
+green reads naturally against warm neutrals, and the red apple settles into the
+scene instead of floating on top of it. The snake green was pulled away from
+cyan toward yellow at the same time, so it reads as foliage rather than neon.
+
+The apple's leaf had to move too — once the snake became leaf-green the two were
+close enough to confuse, so the leaf was pushed further toward yellow.
 
 Stone-slab texture was rejected: it reads as a natural material and clashes with
 the flat, saturated style. Pure noise alone was not enough either, because
@@ -292,16 +307,17 @@ combination keeps both the modern look and the readable grid.
 
 | Role | Hex |
 |---|---|
-| Snake outline | `#1B5E3A` |
-| Snake edge | `#249E63` |
-| Snake body | `#3DD68C` |
-| Snake centre highlight | `#7FF5B8` |
+| Snake outline | `#1D5226` |
+| Snake edge | `#2E8C3C` |
+| Snake body | `#4FC259` |
+| Snake centre highlight | `#8ADE7C` |
 | Apple body | `#FF4757` |
 | Apple highlight | `#FF8A94` |
-| Board gap | `#0F162A` |
-| Board dark cell | `#1C2746` |
-| Board light cell | `#222F54` |
-| Cell top edge | `#293862` |
+| Apple leaf | `#A5E063` |
+| Board gap | `#14100D` |
+| Board dark cell | `#2A231C` |
+| Board light cell | `#322A21` |
+| Cell top edge | `#3D3328` |
 
 ### Board tile revision
 
