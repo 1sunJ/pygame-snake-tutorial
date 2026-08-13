@@ -1,35 +1,46 @@
 # 게임 전체에서 공유하는 상수 설정 파일
 # 이 값들을 바꾸면 게임 크기, 속도, 색상이 한 번에 바뀜
+#
+# 좌표는 두 종류가 있다.
+#   내부(VIEW_*)  : 그림을 실제로 그리는 낮은 해상도. 320x338
+#   창(WIDTH/HEIGHT): 내부 화면을 SCALE배 확대해 띄우는 크기. 640x676
+# 픽셀아트는 낮은 해상도로 그린 뒤 정수배로 확대해야 픽셀이 눈에 보인다.
+# 1:1로 그리면 픽셀이 너무 작아 각진 맛이 사라진다.
 
-CELL_SIZE = 32          # 각 셀(칸) 하나의 픽셀 크기 (스프라이트 한 장의 크기와 같음)
+CELL_SIZE = 16          # 각 셀(칸) 크기 = 스프라이트 한 장의 크기
 COLS = 20               # 가로 칸 수
 ROWS = 20               # 세로 칸 수
-WIDTH    = COLS * CELL_SIZE   # 화면 가로 픽셀 (20 * 32 = 640)
-BOARD_H  = ROWS * CELL_SIZE   # 게임 판 높이 (20 * 32 = 640)
-FOOTER_H = 34                 # 판 아래 제작자 표기 영역
-HEIGHT   = BOARD_H + FOOTER_H # 창 전체 높이
+SCALE = 2               # 확대 배율. 반드시 정수여야 픽셀이 뭉개지지 않음
+
+VIEW_W       = COLS * CELL_SIZE      # 내부 가로 (20 * 16 = 320)
+VIEW_BOARD_H = ROWS * CELL_SIZE      # 내부 판 높이 (320)
+FOOTER_H     = 18                    # 내부 하단 표기 영역
+VIEW_H       = VIEW_BOARD_H + FOOTER_H   # 내부 전체 높이 (338)
+
+WIDTH  = VIEW_W * SCALE   # 창 가로 (640)
+HEIGHT = VIEW_H * SCALE   # 창 세로 (676)
 
 FPS_INIT = 10           # 시작 속도: 초당 10프레임 = 뱀이 1초에 10칸 이동
 
-# 화면이 400 → 640으로 커졌으므로 글자와 표 간격도 같은 비율(1.6배)로 키움
-FONT_BIG   = 38
-FONT_SMALL = 28
-FONT_TINY  = 16   # 하단 제작자 표기용
+# 글자도 내부 해상도 기준이다. 화면에서는 SCALE배로 보인다
+FONT_BIG   = 19   # 화면에서 38px처럼 보임
+FONT_SMALL = 14   # 화면에서 28px처럼 보임
+FONT_TINY  = 9    # 하단 제작자 표기용
 
 # 제작자 표기
 CREDIT    = "created by 1sunj"
-COPYRIGHT = "© 2026 1sunj. All rights reserved."
+COPYRIGHT = "(c) 2026 1sunj"
 
 BG    = (26,  21,  17)  # 게임 오버/랭킹 화면 바탕
 GREEN = (79, 194,  89)  # 뱀 스프라이트와 같은 초록 (강조 글자용)
-WHITE = (255, 255, 255)
+WHITE = (240, 236, 228) # 순백보다 살짝 낮춰 눈이 덜 피로하게
 
 # 게임 판 배경. 이미지가 아니라 renderer가 시작할 때 계산해서 그린다
 BOARD      = (38, 32, 26)   # 판 바탕
-BOARD_DOT  = (72, 62, 50)   # 칸 모서리에 찍는 점
+BOARD_DIM  = (32, 27, 22)   # 가장자리 쪽 한 단계 어두운 바탕
+BOARD_DOT  = (60, 52, 42)   # 칸 모서리에 찍는 점
 FRAME      = (24, 20, 16)   # 바깥 테두리
 FRAME_LINE = (60, 51, 41)   # 테두리 안쪽 가는 선
-VIGNETTE   = 0.42           # 가장자리를 얼마나 어둡게 할지 (0.0 ~ 1.0)
 
 FOOTER_BG   = (18, 15, 12)  # 하단 표기 영역 바탕
 FOOTER_TEXT = (110, 98, 84) # 하단 표기 글자 (조용하게)
