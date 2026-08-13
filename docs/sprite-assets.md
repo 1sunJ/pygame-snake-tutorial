@@ -62,14 +62,25 @@ Target layout:
 
 ```
 assets/
-  sprites/
+  sprites/          moving objects
     snake_head.png
     snake_body.png
     snake_corner.png
     snake_tail.png
     food_apple.png
+  tiles/            repeating background
     bg_tile.png
 ```
+
+The split follows the original meaning of the terms. A *sprite* is a movable
+image drawn over the background; a *tile* is a fixed piece repeated to build the
+background itself. `bg_tile.png` is the only tile here.
+
+Note that "sprite" in this document means an image file, in the general sense.
+It does **not** refer to `pygame.sprite.Sprite`, the class-based helper with
+built-in collision handling. `snake_game.py` already tracks the snake as a list
+of coordinate tuples and does its own collision checks, so that class is not
+used.
 
 `.gitignore` does not exclude `assets/`, so these will be committed. At roughly
 1 KB each that is fine.
