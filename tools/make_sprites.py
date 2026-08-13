@@ -43,9 +43,10 @@ LEAF          = (124, 214,  92)
 LEAF_LIT      = (168, 240, 130)
 LEAF_OUTLINE  = (58,  120,  44)
 
-BG_A     = (22, 33, 62)     # 어두운 칸
-BG_B     = (27, 40, 71)     # 밝은 칸
-BG_LINE  = (36, 53,  92)    # 셀 경계선 (아주 옅게)
+BG_GAP   = (15, 22,  42)    # 칸 사이 이음새 (가장 어두움)
+BG_A     = (28, 39,  70)    # 어두운 칸
+BG_B     = (34, 47,  84)    # 밝은 칸
+BG_EDGE  = (41, 56,  98)    # 칸 위쪽 모서리 (살짝 도드라지게)
 
 
 def new_surface(w, h=None):
@@ -123,33 +124,52 @@ def make_corner():
 
 
 def make_head():
-    # 오른쪽을 바라보는 머리. 왼쪽 변만 꽉 채우고 앞쪽은 타원으로 둥글게
+    # 오른쪽을 바라보는 머리. 왼쪽 변만 꽉 채우고 앞쪽은 둥글게
+    #
+    # 목(왼쪽 끝)은 몸통과 같은 28px이지만 눈 부근에서 30px까지 부풀린다.
+    # 머리가 몸통과 굵기가 같으면 어디가 앞인지 한눈에 안 들어옴
     surf = new_surface(CELL)
     mask = [[False] * CELL for _ in range(CELL)]
 
-    ecx, ecy = 20.0, 16.0    # 주둥이 타원 중심
-    ea, eb   = 9.0, 14.0     # 가로/세로 반지름
+    center   = CELL / 2.0
+    half     = TUBE / 2.0     # 14.0, 몸통과 똑같은 굵기
+    snout_x  = 20.0           # 여기서부터 앞쪽으로 좁아짐
+    snout_a  = 9.0
 
+    # 머리를 몸통보다 굵게 만들어 봤지만 32px에서는 1px밖에 못 넓힌다.
+    # 그 1px이 부드러운 곡선이 아니라 단차로 보여서 오히려 결함처럼 읽혔다.
+    # 굵기는 몸통에 맞추고 눈과 주둥이 모양으로만 머리를 구분한다.
     for y in range(CELL):
         for x in range(CELL):
             px, py = x + 0.5, y + 0.5
-            flat = (x <= 20) and (MARGIN <= y < MARGIN + TUBE)
-            snout = ((px - ecx) / ea) ** 2 + ((py - ecy) / eb) ** 2 <= 1.0
-            if flat or snout:
+            dy = abs(py - center)
+
+            if px <= snout_x:
+                inside = dy <= half
+            else:
+                # 주둥이는 지수 2.5의 초타원 → 타원보다 뭉툭하게 떨어짐
+                u = (px - snout_x) / snout_a
+                inside = u <= 1.0 and (u ** 2.5 + (dy / half) ** 2.5) <= 1.0
+
+            if inside:
                 mask[y][x] = True
-                surf.set_at((x, y), tube_tone(abs(py - ecy)))
+                surf.set_at((x, y), tube_tone(dy))
 
     draw_outline(surf, mask, CELL)
 
-    # 위에서 내려다보는 시점이라 눈이 위아래로 두 개
-    # 눈동자는 앞쪽(오른쪽) + 중심선 쪽으로 붙여서 위아래가 서로 대칭이 되게 함
-    for eye_y, pupil_dy in ((7, 1), (22, 0)):
-        for yy in range(eye_y, eye_y + 3):
-            for xx in range(17, 20):
-                surf.set_at((xx, yy), EYE_WHITE)
-        for yy in range(eye_y + pupil_dy, eye_y + pupil_dy + 2):
-            for xx in range(18, 20):
-                surf.set_at((xx, yy), EYE_PUPIL)
+    # 위에서 내려다보는 시점이라 눈이 위아래로 두 개.
+    # 흰자에 검은 눈동자를 넣으면 32px에서는 흰 사각형 두 개로만 보인다.
+    # 어두운 눈에 반사광 점을 찍는 쪽이 훨씬 눈처럼 읽힘.
+    # 위/아래 눈은 중심선(y=16) 기준으로 정확히 대칭인 자리에 놓는다
+    for top, glint_y in ((7, 8), (21, 23)):
+        for dy_ in range(4):
+            for dx_ in range(4):
+                # 네 모서리를 비워 둥글게
+                if dx_ in (0, 3) and dy_ in (0, 3):
+                    continue
+                surf.set_at((19 + dx_, top + dy_), EYE_PUPIL)
+        # 반사광은 1픽셀이면 충분하다. 2픽셀만 돼도 과녁처럼 보임
+        surf.set_at((20, glint_y), EYE_WHITE)
 
     # 갈라진 혀
     for px, py in ((29, 15), (29, 16), (30, 15), (30, 16), (31, 14), (31, 17)):
@@ -240,30 +260,46 @@ def make_apple():
     return surf
 
 
+def in_round_rect(px, py, x0, y0, x1, y1, r):
+    # 모서리가 둥근 사각형 안에 있는지 검사
+    # 사각형을 안쪽으로 r만큼 줄인 영역에서 가장 가까운 점을 찾고
+    # 그 점까지의 거리가 r 이하이면 안쪽
+    cx = min(max(px, x0 + r), x1 - r)
+    cy = min(max(py, y0 + r), y1 - r)
+    return (px - cx) ** 2 + (py - cy) ** 2 <= r * r
+
+
 def make_bg_tile():
-    # 2칸x2칸(64x64) 체크무늬 + 미세 노이즈 + 셀 경계선
-    # 픽셀마다 독립적인 노이즈라 이어붙여도 이음새가 생기지 않음
+    # 2칸x2칸(64x64) 배경 타일
+    #
+    # 처음엔 평평한 체크무늬에 노이즈를 뿌렸는데, 노이즈가 질감이 아니라
+    # 얼룩처럼 보이고 경계선이 칸의 두 변에만 있어 모눈종이처럼 어긋나 보였다.
+    # 칸마다 모서리가 둥근 판을 깔고 사이를 어둡게 비우는 방식으로 바꿈.
+    # 격자가 "의도된 무늬"로 읽히고 이음새도 사방이 균일해진다.
     size = CELL * 2
     surf = pygame.Surface((size, size))
+    surf.fill(BG_GAP)
     rng = random.Random(20260813)
 
     for y in range(size):
         for x in range(size):
+            # 각 칸의 내부 좌표 (0~31)
+            lx, ly = x % CELL + 0.5, y % CELL + 0.5
+            if not in_round_rect(lx, ly, 1.0, 1.0, CELL - 1.0, CELL - 1.0, 5.0):
+                continue
+
             same = (x // CELL) == (y // CELL)
             r, g, b = BG_A if same else BG_B
 
-            # 밝기만 살짝 흔들어 질감을 만듦 (2~3단계 이내)
-            n = rng.random()
-            if n < 0.12:
-                r, g, b = r + 5, g + 6, b + 7
-            elif n < 0.24:
-                r, g, b = r - 3, g - 4, b - 5
+            # 위쪽 모서리를 한 단계 밝게 해서 살짝 튀어나와 보이게 함
+            if not in_round_rect(lx, ly + 1.5, 1.0, 1.0, CELL - 1.0, CELL - 1.0, 5.0):
+                r, g, b = BG_EDGE
 
-            # 셀 경계에만 옅은 선 (반복해 붙이면 격자가 됨)
-            if x % CELL == 0 or y % CELL == 0:
-                r, g, b = BG_LINE
+            # 아주 옅은 질감. 판 안에서만 흔들어야 얼룩으로 안 보임
+            elif rng.random() < 0.10:
+                r, g, b = r + 3, g + 4, b + 5
 
-            surf.set_at((x, y), (max(0, r), max(0, g), max(0, b)))
+            surf.set_at((x, y), (r, g, b))
 
     return surf
 

@@ -144,8 +144,14 @@ x=0                              x=31
 
 - Top-down view, so **both eyes are visible**, one above and one below the
   centre line.
-- Eye: 2x2 white with a 1-2px dark pupil.
+- Eye: a 4x4 dark blob with the corners cut, plus a **single** white pixel as a
+  highlight. A white eyeball with a dark pupil was tried first and read as two
+  white squares; two highlight pixels instead of one read as a bullseye.
 - Only the left edge is full bleed; it is the only side that meets the body.
+- **Same thickness as the body.** Making the head wider was tried and abandoned:
+  at 32px there is room for exactly 1px of extra width, and a 1px change renders
+  as a visible step at the neck rather than a curve. The head is distinguished
+  by its eyes and rounded snout instead.
 
 ### 4-4. `snake_tail.png` — tail tip, body to the right
 
@@ -292,12 +298,22 @@ combination keeps both the modern look and the readable grid.
 | Snake centre highlight | `#7FF5B8` |
 | Apple body | `#FF4757` |
 | Apple highlight | `#FF8A94` |
-| Board dark cell | `#16213E` |
-| Board light cell | `#1B2847` |
-| Cell border | `#24355C` |
+| Board gap | `#0F162A` |
+| Board dark cell | `#1C2746` |
+| Board light cell | `#222F54` |
+| Cell top edge | `#293862` |
 
-The board colours sit only 2-3 brightness steps apart, so the grid registers
-without competing with the snake for attention.
+### Board tile revision
+
+The first attempt was a flat checkerboard with per-pixel noise and a 1px lighter
+line on two sides of each cell. It looked muddy: the noise read as smudging
+rather than texture, and because the line only ran along two edges the grid
+looked misaligned, like graph paper printed off-register.
+
+The current tile instead draws each cell as a rounded plate with a darker gap
+between plates, and lifts the top edge of each plate by one shade. The grid now
+reads as a deliberate pattern rather than dirt, and the gap is uniform on all
+four sides.
 
 ---
 
