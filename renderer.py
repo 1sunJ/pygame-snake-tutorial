@@ -8,9 +8,10 @@
 import os
 import math
 import pygame
-from settings import (CELL_SIZE, WIDTH, HEIGHT, BG, GREEN, WHITE,
-                      FONT_BIG, FONT_SMALL,
-                      BOARD, BOARD_DOT, FRAME, FRAME_LINE, VIGNETTE)
+from settings import (CELL_SIZE, WIDTH, HEIGHT, BOARD_H, FOOTER_H,
+                      BG, GREEN, WHITE, FONT_BIG, FONT_SMALL, FONT_TINY,
+                      BOARD, BOARD_DOT, FRAME, FRAME_LINE, VIGNETTE,
+                      FOOTER_BG, FOOTER_TEXT, CREDIT, COPYRIGHT)
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -41,6 +42,7 @@ class Renderer:
         KOREAN_FONTS = "malgungothic,applegothic,notosanscjkkr,arial"
         self.font   = pygame.font.SysFont(KOREAN_FONTS, FONT_BIG)
         self.small  = pygame.font.SysFont(KOREAN_FONTS, FONT_SMALL)
+        self.tiny   = pygame.font.SysFont(KOREAN_FONTS, FONT_TINY)
 
         # 이미지는 시작할 때 한 번만 읽는다.
         # 매 프레임 load하면 그릴 때마다 디스크를 읽어 게임이 느려짐
@@ -57,6 +59,17 @@ class Renderer:
     def _load(self, *parts):
         return pygame.image.load(os.path.join(ASSETS, *parts)).convert_alpha()
 
+    @staticmethod
+    def _dim(color, f):
+        # 색을 f배 어둡게 (f=1.0이면 그대로, 0.5면 절반)
+        return (int(color[0] * f), int(color[1] * f), int(color[2] * f))
+
+    def _falloff(self, x, y):
+        # 판 중심에서 멀수록 1에 가까워지는 값. 비네팅 세기를 정하는 데 씀
+        cx, cy = WIDTH / 2.0, BOARD_H / 2.0
+        t = math.hypot(x - cx, y - cy) / math.hypot(cx, cy)
+        return min(1.0, t) ** 1.4
+
     def _build_board(self):
         # 판 배경을 이미지 파일 대신 여기서 계산해서 그린다.
         #
@@ -67,35 +80,47 @@ class Renderer:
         # 가장자리를 어둡게 하는 비네팅은 화면 중심에서의 거리에 따라 값이
         # 달라져서 반복 타일로는 만들 수 없다. 그래서 이미지 파일이 사라졌고,
         # 덕분에 격자 크기를 바꿔도 배경은 알아서 따라온다.
-        board = pygame.Surface((WIDTH, HEIGHT))
-        board.fill(BOARD)
+        #
+        # 처음에는 검은 반투명 판을 덮어 어둡게 했는데, 알파를 가진 표면을
+        # smoothscale로 확대하는 조합이 실제 디스플레이 픽셀 포맷에서 깨져
+        # 판이 통째로 하얘졌다. 헤드리스 테스트에서는 멀쩡해서 못 잡았다.
+        # 지금은 알파를 아예 쓰지 않고 색을 직접 어둡게 계산한다.
+        small = 128
+        grad = pygame.Surface((small, small))
+        for gy in range(small):
+            for gx in range(small):
+                # 축소판 좌표를 실제 판 좌표로 되돌려서 밝기를 구함
+                x = (gx + 0.5) * WIDTH / small
+                y = (gy + 0.5) * BOARD_H / small
+                grad.set_at((gx, gy),
+                            self._dim(BOARD, 1.0 - VIGNETTE * self._falloff(x, y)))
+
+        # 640x640을 픽셀마다 계산하면 40만 번이라 시작이 눈에 띄게 느려진다.
+        # 작게 계산한 뒤 부드럽게 확대하면 결과는 같고 훨씬 빠르다.
+        # 너무 작게(48 등) 잡으면 확대할 때 중앙에 사각 얼룩이 남아 128로 둠
+        board = pygame.transform.smoothscale(grad, (WIDTH, BOARD_H))
 
         # 칸 모서리에 점 하나씩. 사과와 머리가 같은 줄인지 눈으로 재는 용도
-        for y in range(0, HEIGHT, CELL_SIZE):
+        # 점도 바탕과 같은 비율로 어둡게 해야 가장자리에서 튀지 않는다
+        for y in range(0, BOARD_H, CELL_SIZE):
             for x in range(0, WIDTH, CELL_SIZE):
-                board.set_at((x, y), BOARD_DOT)
-
-        board.blit(self._vignette(), (0, 0))
+                board.set_at((x, y),
+                             self._dim(BOARD_DOT, 1.0 - VIGNETTE * self._falloff(x, y)))
 
         # 판이 창 끝까지 흘러넘치지 않도록 테두리를 두름
         # 배경에 그리므로 가장자리 칸을 지나는 뱀이 위에 덮인다
-        pygame.draw.rect(board, FRAME, (0, 0, WIDTH, HEIGHT), 5)
-        pygame.draw.rect(board, FRAME_LINE, (5, 5, WIDTH - 10, HEIGHT - 10), 1)
+        pygame.draw.rect(board, FRAME, (0, 0, WIDTH, BOARD_H), 5)
+        pygame.draw.rect(board, FRAME_LINE, (5, 5, WIDTH - 10, BOARD_H - 10), 1)
         return board
 
-    def _vignette(self):
-        # 640x640 픽셀을 하나씩 계산하면 40만 번이라 시작이 눈에 띄게 느려진다.
-        # 작게 계산한 뒤 부드럽게 확대하면 결과는 같고 훨씬 빠름.
-        # 너무 작게 잡으면(48 등) 확대할 때 중앙에 사각 얼룩이 남아 128로 둠
-        small = 128
-        shade = pygame.Surface((small, small), pygame.SRCALPHA)
-        c = (small - 1) / 2.0
-        far = math.hypot(c, c)
-        for y in range(small):
-            for x in range(small):
-                t = (math.hypot(x - c, y - c) / far) ** 1.4
-                shade.set_at((x, y), (0, 0, 0, int(VIGNETTE * min(1.0, t))))
-        return pygame.transform.smoothscale(shade, (WIDTH, HEIGHT))
+    def _draw_footer(self):
+        # 판 아래 제작자 표기. 게임 칸을 덮지 않도록 창을 그만큼 키워 뒀다
+        pygame.draw.rect(self.screen, FOOTER_BG, (0, BOARD_H, WIDTH, FOOTER_H))
+        cy = BOARD_H + FOOTER_H // 2
+        left = self.tiny.render(CREDIT, False, FOOTER_TEXT)
+        self.screen.blit(left, left.get_rect(midleft=(14, cy)))
+        right = self.tiny.render(COPYRIGHT, False, FOOTER_TEXT)
+        self.screen.blit(right, right.get_rect(midright=(WIDTH - 14, cy)))
 
     def _segment(self, snake, i):
         # snake[i]가 어떤 모양이어야 하는지 판단해서 (이미지, 회전각)을 반환
@@ -137,26 +162,34 @@ class Renderer:
             self.screen.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
         # 점수를 좌측 상단에 표시
-        score_text = self.font.render(f"Score: {score}", True, WHITE)
-        self.screen.blit(score_text, (8, 6))
+        # 안티에일리어싱을 끄는 이유는 _center_text 쪽 설명 참고
+        score_text = self.font.render(f"Score: {score}", False, WHITE)
+        self.screen.blit(score_text, (14, 10))
+
+        self._draw_footer()
 
     def _center_text(self, text, y, font=None, color=WHITE):
         # 텍스트를 가로 중앙 정렬해서 y 위치에 그리는 내부 헬퍼
         # get_rect(center=...)로 텍스트 길이에 상관없이 자동 정렬됨
+        #
+        # render의 두 번째 인자가 안티에일리어싱 여부인데 전부 꺼 두었다.
+        # 켜면 글자 경계에 중간색이 섞여 부드러워지는데, 각진 픽셀아트 위에서는
+        # 그 매끈함이 혼자 튄다. 끄면 글자도 픽셀 경계에 딱 떨어진다.
         font = font or self.font
-        surface = font.render(text, True, color)
+        surface = font.render(text, False, color)
         self.screen.blit(surface, surface.get_rect(center=(WIDTH // 2, y)))
 
     def draw_name_input(self, score, nickname):
         # 게임 오버 후 닉네임을 입력받는 화면
         # nickname은 main.py가 키 입력을 모아서 넘겨주는 문자열
         self.screen.fill(BG)
-        self._center_text("Game Over!", HEIGHT // 2 - 112)
-        self._center_text(f"Score: {score}", HEIGHT // 2 - 64)
-        self._center_text("Enter your nickname:", HEIGHT // 2 - 8, self.small)
+        self._center_text("Game Over!", BOARD_H // 2 - 112)
+        self._center_text(f"Score: {score}", BOARD_H // 2 - 64)
+        self._center_text("Enter your nickname:", BOARD_H // 2 - 8, self.small)
         # 커서 대신 밑줄(_)을 붙여 지금 입력 중이라는 걸 표시
-        self._center_text(nickname + "_", HEIGHT // 2 + 40, self.font, GREEN)
-        self._center_text("ENTER = save   ESC = skip", HEIGHT // 2 + 104, self.small)
+        self._center_text(nickname + "_", BOARD_H // 2 + 40, self.font, GREEN)
+        self._center_text("ENTER = save   ESC = skip", BOARD_H // 2 + 104, self.small)
+        self._draw_footer()
 
     def draw_ranking(self, rows, score):
         # DB에서 받아온 상위 10명을 표로 표시
@@ -167,12 +200,13 @@ class Renderer:
 
         if not rows:
             # DB 설정이 안 됐거나 네트워크 오류일 때
-            self._center_text("(no data)", HEIGHT // 2, self.small)
+            self._center_text("(no data)", BOARD_H // 2, self.small)
         else:
             # enumerate(rows, 1)로 1등부터 순위 번호를 매김
             for i, row in enumerate(rows, 1):
                 line = f"{i:2d}. {row['nickname']:<12} {row['score']}"
-                text = self.small.render(line, True, WHITE)
+                text = self.small.render(line, False, WHITE)
                 self.screen.blit(text, (96, 128 + (i - 1) * 42))
 
-        self._center_text("SPACE to restart", HEIGHT - 40, self.small)
+        self._center_text("SPACE to restart", BOARD_H - 40, self.small)
+        self._draw_footer()
